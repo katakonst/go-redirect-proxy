@@ -27,6 +27,6 @@ Redirect traffic from port 8080 to port 6000
 # View Last Requests Logs
 View request which path match the regex pattern from query and sort "desc" or "asc" by timestamp.
 ```shell
-http://localhost:8001/?path=<reges>&sort=desc
+http://localhost:8001/?path=<regex>&sort=desc
 ```
 
