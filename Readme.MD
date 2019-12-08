@@ -1,14 +1,14 @@
-#Work in Progress
+# Work in Progress
 # Reverse proxy with logging
 A reverse proxy with logging capabilities made for development purposses
 
-#How to use it
-##Command Line
+# How to use it
+## Command Line
 Redirect traffic from port 8080 to port 6000
 ```shell
 ./go-redirect-proxy -source=8080 -target=6000
 ```
-##Config File
+## Config File
 ```shell
 ./go-redirect-proxy -file=config.json
 ```
@@ -24,7 +24,7 @@ Redirect traffic from port 8080 to port 6000
 }
 ```
 
-#View Last Requests Logs
+# View Last Requests Logs
 View request which path match the regex pattern from query and sort "desc" or "asc" by timestamp.
 ```shell
 http://localhost:8001/?path=<reges>&sort=desc
