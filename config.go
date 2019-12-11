@@ -11,6 +11,7 @@ type Config struct {
 	LogLevel        string
 	source          string
 	target          string
+	logPort         string
 }
 
 func InitConfig() (Config, error) {
@@ -18,6 +19,7 @@ func InitConfig() (Config, error) {
 	logLevel := flag.String("log-level", "info", "log level")
 	source := flag.String("source", "", "source port")
 	target := flag.String("target", "", "target port")
+	logPort := flag.String("logPort", "8081", "target port")
 	flag.Parse()
 
 	proxyConfigs := make(map[string]interface{})
@@ -32,9 +34,10 @@ func InitConfig() (Config, error) {
 
 	return Config{
 		ProxyConfigs:      proxyConfigs,
-		LogLevel:        *logLevel,
+		LogLevel:      *logLevel,
 		source:        *source,
-		target:     *target,
+		target:        *target,
+		logPort:       *logPort,
 	}, nil
 }
 
