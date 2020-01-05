@@ -19,7 +19,9 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
+
 		proxy.startProxy(appConfigs.source, targetUrl)
+		proxy.proxyLogger.startWS(appConfigs.wsPort)
 		proxy.serveLogs()
 	}
 
@@ -32,6 +34,8 @@ func main() {
 			logger.Fatalf("Fatal error %v", err)
 		}
 		proxy.startProxy(fmt.Sprintf("%v", elem.(map[string]interface{})["source"]), ruleUrl)
+		proxy.proxyLogger.startWS(fmt.Sprintf("%v", elem.(map[string]interface{})["wsPort"]))
 	}
 	proxy.serveLogs()
+
 }

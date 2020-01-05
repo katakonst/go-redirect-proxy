@@ -32,6 +32,7 @@ type ProxyHandler struct {
 
 func (p *ProxyHandler) proxyRequest(w http.ResponseWriter, r *http.Request) {
 	p.proxy.Transport = &Transport{http.DefaultTransport, p.proxyLogger}
+	p.proxyLogger.log.Infof("Proxy Request with path %v", html.EscapeString(r.URL.Path))
 	p.proxy.ServeHTTP(w, r)
 }
 
@@ -44,6 +45,8 @@ func (p *Proxy) startProxy(port string, url *url.URL) {
 		proxy := &ProxyHandler{proxy: httputil.NewSingleHostReverseProxy(url),
 			proxyLogger:p.proxyLogger}
 		http.HandleFunc("/", proxy.proxyRequest)
+
+		p.log.Infof("Starting proxy server on port %v", port)
 		log.Fatal(http.ListenAndServe(":"+port, nil))
 	}()
 }
@@ -58,20 +61,42 @@ func (t *Transport) RoundTrip(req *http.Request) (resp *http.Response, err error
 	if err != nil {
 		return nil, err
 	}
-	b, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
+
+	respBody,reqBody,err :=getBodys(req,resp)
+	if err!=nil {
 		return nil, err
+	}
+
+	t.Proxy.addToMap(html.EscapeString(resp.Request.URL.Path),
+		string(respBody), resp.Request.Method, req.Header, resp.Status, string(reqBody))
+
+	body := ioutil.NopCloser(bytes.NewReader(respBody))
+	resp.Body = body
+	resp.ContentLength = int64(len(respBody))
+	resp.Header.Set("Content-Length", strconv.Itoa(len(respBody)))
+
+	return resp, nil
+}
+
+func getBodys (req *http.Request, resp *http.Response) ([]byte, []byte, error) {
+	respBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil,nil, err
 	}
 	err = resp.Body.Close()
 	if err != nil {
-		return nil, err
+		return nil,nil, err
 	}
-	t.Proxy.addToMap(html.EscapeString(resp.Request.URL.Path),
-		string(b), resp.Request.Method, req.Header)
-	body := ioutil.NopCloser(bytes.NewReader(b))
-	resp.Body = body
-	resp.ContentLength = int64(len(b))
-	resp.Header.Set("Content-Length", strconv.Itoa(len(b)))
-
-	return resp, nil
+	reqBody := []byte{}
+	if req.Body != nil {
+		reqBody, err = ioutil.ReadAll(req.Body)
+		if err != nil {
+			return nil,nil, err
+		}
+		err = req.Body.Close()
+		if err != nil {
+			return nil,nil, err
+		}
+	}
+	return respBody,reqBody,nil
 }

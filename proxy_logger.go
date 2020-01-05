@@ -1,6 +1,8 @@
 package main
 
 import (
+	"github.com/gorilla/websocket"
+	"log"
 	"net/http"
 	"regexp"
 	"time"
@@ -9,30 +11,70 @@ import (
 type ProxyLogger struct {
 	requestsMap map[string][]interface{}
 	log *Log
+	wsChanel chan interface{}
 }
 
 type Request struct {
 	Path string
 	Timestamp int64
 	Body string
+	RequestBody string
 	Method string
 	Headers http.Header
+	Status string
 }
 
 func newProxyLogger(logger *Log) *ProxyLogger {
 	requestsMap := make(map[string][]interface{})
-	return &ProxyLogger{requestsMap, logger}
+	return &ProxyLogger{requestsMap, logger, make(chan interface{},10)}
 }
 
-func (p* ProxyLogger) addToMap(path string, body string, method string, headers http.Header) {
-	r := p.requestsMap[path]
-	if len(r) == 0 {
-		r = make([]interface{}, 0)
+func (p* ProxyLogger) addToMap(path string, body string, method string,
+	headers http.Header, status string, requestBody string) {
+
+	requestsSlice := p.requestsMap[path]
+	if len(requestsSlice) == 0 {
+		requestsSlice = make([]interface{}, 0)
 	}
-	r = append(r, Request{Path:path,
+	request := Request{Path:path,
 		Timestamp:time.Now().Unix(),
-		Body:body, Method:method, Headers:headers})
-	p.requestsMap[path]=r
+		Body:body,
+		RequestBody: requestBody,
+		Method:method,
+		Headers:headers}
+
+	requestsSlice = append(requestsSlice, request)
+	p.wsChanel <-request
+	p.requestsMap[path]=requestsSlice
+}
+
+func (p *ProxyLogger) startWS(port string) {
+	go func() {
+		server2 := http.NewServeMux()
+		server2.HandleFunc("/ws", p.handleWS)
+		p.log.Infof("Starting ws server on port %v", port)
+		log.Fatal(http.ListenAndServe(":"+port, server2))
+	}()
+}
+
+var upgrader = websocket.Upgrader{}
+
+func (p *ProxyLogger) handleWS(w http.ResponseWriter, r *http.Request) {
+	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
+	c, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		p.log.Errorf("handleWS upgrade error: %v", err)
+		return
+	}
+	defer c.Close()
+	for {
+		ele:= <- p.wsChanel
+		err := c.WriteJSON(ele)
+		if err != nil {
+			p.log.Errorf("handleWS write error: %v", err)
+			break
+		}
+	}
 }
 
 func (p* ProxyLogger) get(path string) []interface{} {
@@ -55,5 +97,3 @@ func (p* ProxyLogger) getLogByRegex(regexPath string) []interface{} {
 	}
 	return result
 }
-
-

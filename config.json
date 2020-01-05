@@ -2,7 +2,8 @@
 "rules":[
 {
 "source":"8080",
-"target":"7090"
+"target":"7090",
+ "wsPort":"3030"
 }
 ]
 }
